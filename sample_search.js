@@ -1,5 +1,27 @@
 // Sample
 
+// Utility
+var util = {
+        // innerproduct
+        innerproduct : function (v1, v2) {
+                var sum = 0;
+                for(var key in v1) {
+                        if (v2[key]) {
+                                sum += v1[key] * v2[key];
+                        }
+                }
+                return sum;
+        },
+        // norm
+        norm : function (v) {
+                var sum = 0;
+                for(var key in v) {
+                        sum += v[key] * v[key];
+                }
+                return Math.sqrt(sum);
+        }
+}
+
 var tweets_search = function (keyword) {
 	db.tweets_tfidf.mapReduce(
 		function () {
@@ -26,4 +48,5 @@ var tweets_search = function (keyword) {
 }
 
 tweets_search({"job":1, "today":1});
+
 
