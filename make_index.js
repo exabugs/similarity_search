@@ -63,7 +63,7 @@ db[master_name].mapReduce(
 
 // TF-IDF
 var dic = {};
-db[master_name+'_idf'].find().sort({value:-1}).limit(100000).forEach( function (idf) {dic[idf._id] = idf.value} );
+db[master_name+'_idf'].find().sort({value:1}).limit(100000).forEach( function (idf) {dic[idf._id] = idf.value} );
 db[master_name].mapReduce(
 	function () {
 		var v = util.product(this.tf.v, dic);
