@@ -1,42 +1,59 @@
+//
+//
+//
 
 var master_name = 'tweets';
 
 // Utility
 var util = {
-	// innerproduct
-	innerproduct : function (v1, v2) {
+	// product
+	product : function (a, v) {
+		for (var i = 0; i < a.length; i++) {
+			if (v[a[i].k])
+				a[i].w = a[i].v * v[a[i].k];
+			else
+				a[i].w = a[i].v;
+		}
+		return a;
+	},
+	// norm
+	norm : function (a) {
 		var sum = 0;
-		for(var key in v1) {
-			if (v2[key]) {
-				sum += v1[key] * v2[key];
+		for (var i = 0; i < a.length; i++) {
+			if (a[i].w) {
+				sum += a[i].w * a[i].w;
+			}
+		}
+		return Math.sqrt(sum);
+	},
+	// innerproduct
+	innerproduct : function (a, v) {
+		var sum = 0;
+		for (var i = 0; i < a.length; i++) {
+			var info = a[i];
+			if (v[info.k]) {
+				sum += info.w * v[info.k];
 			}
 		}
 		return sum;
 	},
-	// norm
-	norm : function (v) {
-		var sum = 0;
-		for(var key in v) {
-			sum += v[key] * v[key];
-		}
-		return Math.sqrt(sum);
-	},
-	// product
-	product : function (v1, v2) {
-		var v = {};
-		for(var key in v1) {
-			if (v2[key]) {
-				v[key] = v1[key] * v2[key];
+	// to_hash
+	to_hash : function (a) {
+		var ret = {};
+		for (var i = 0; i < a.length; i++) {
+			if (a[i].w) {
+				ret[a[i].k] = a[i].w;
 			}
 		}
-		return v;
+		return ret;
 	}
 }
 
 // IDF Dictionary
 db[master_name].mapReduce(
 	function () {
-		for (key in this.tf) {emit(key, 1);};
+		for (var i = 0; i < this.tf.v.length; i++)
+			emit(this.tf.v[i].k, 1);
 	},
 	function(key,values) {
 		return Array.sum(values);
@@ -49,7 +66,7 @@ var dic = {};
 db[master_name+'_idf'].find().sort({value:-1}).limit(100000).forEach( function (idf) {dic[idf._id] = idf.value} );
 db[master_name].mapReduce(
 	function () {
-		var v = util.product(this.tf, dic);
+		var v = util.product(this.tf.v, dic);
 		emit(this._id, {v: v, l: util.norm(v)});
 	},
 	function(key,values) {
@@ -57,16 +74,21 @@ db[master_name].mapReduce(
 	},
 	{scope: {util: util, dic: dic}, out: master_name+'_tfidf'}
 );
+db[master_name+'_tfidf'].find().forEach(function (tgt) {
+	db[master_name].update({_id: tgt._id},{$set: {tf: tgt.value}});
+});
+db[master_name+'_tfidf'].drop();
 
 // Cosine Similarity
 db[master_name+'_similarity'].drop();
-var cursor = db[master_name+'_tfidf'].find();
+var cursor = db[master_name].find();
 while (cursor.hasNext()) {
 	var src = cursor.next();
-	db[master_name+'_tfidf'].mapReduce(
+	src.tf.condition = util.to_hash(src.tf.v);
+	db[master_name].mapReduce(
 		function () {
-			var s = util.innerproduct(this.value.v, src.value.v);
-			if (0 < s) emit(this._id, s / this.value.l / src.value.l);
+			var s = util.innerproduct(this.tf.v, src.tf.condition);
+			if (0 < s) emit(this._id, s / this.tf.l / src.tf.l);
 		},
 		function(key,values) {
 			return values[0];
@@ -80,3 +102,6 @@ while (cursor.hasNext()) {
 		}
 	);
 }
+db[master_name+'_tmp'].drop();
+
+
