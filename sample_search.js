@@ -1,5 +1,8 @@
 // 検索機能 サンプル
-var tweets_search = function (keyword) {
+var tweets_search = function (input) {
+	var keyword = [];
+	for (var i = 0; i < input.length; i++)
+		keyword.push({k:input[i], w:1});
 	var condition = util.to_hash(keyword);
 printjson(condition);
 	// 検索の実行
@@ -11,7 +14,7 @@ printjson(condition);
 		function(key,values) {
 			return values[0];
 		},
-		{scope: {util: util, condition: condition}, out: 'tweets_search_result'}
+		{query: {"tf.v.k": {$in: input}}, scope: {util: util, condition: condition}, out: 'tweets_search_result'}
 	);
 	// 検索結果の表示
 	db.tweets_search_result.find().sort({value:-1}).limit(5).forEach(function (r) {
@@ -30,6 +33,7 @@ printjson(condition);
 	});
 }
 
-tweets_search([{k:"会社",w:1}]);
-tweets_search([{k:"お昼",w:1}]);
-tweets_search([{k:"お正月",w:1}]);
+
+tweets_search(["説明"]);
+tweets_search(["会社","正月"]);
+
