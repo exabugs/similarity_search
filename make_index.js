@@ -46,6 +46,14 @@ var util = {
 			}
 		}
 		return ret;
+	},
+	// to_array
+	to_array : function (a) {
+		var ret = [a.length];
+		for (var i = 0; i < a.length; i++) {
+			ret[i] = a[i].k;
+		}
+		return ret;
 	}
 }
 
@@ -85,6 +93,7 @@ var cursor = db[master_name].find();
 while (cursor.hasNext()) {
 	var src = cursor.next();
 	src.tf.condition = util.to_hash(src.tf.v);
+	var keys = util.to_array(src.tf.v);
 	db[master_name].mapReduce(
 		function () {
 			var s = util.innerproduct(this.tf.v, src.tf.condition);
@@ -93,7 +102,7 @@ while (cursor.hasNext()) {
 		function(key,values) {
 			return values[0];
 		},
-		{scope: {util: util, src: src}, query: {_id:{$gt:src._id}}, out: master_name+'_tmp'}
+		{scope: {util: util, src: src}, query: {_id:{$gt:src._id}, "tf.v.k":{$in:keys}}, out: master_name+'_tmp'}
 	);
 	db[master_name+'_tmp'].find().forEach(
 		function (dst) {
@@ -103,5 +112,4 @@ while (cursor.hasNext()) {
 	);
 }
 db[master_name+'_tmp'].drop();
-
 
